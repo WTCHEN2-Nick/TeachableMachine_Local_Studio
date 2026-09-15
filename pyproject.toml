@@ -1,0 +1,15 @@
+[project]
+name = "teachable-machine-local-studio"
+version = "2.1.0"
+description = "Local image, audio, and YAMNet abnormal-sound studio with strict INT8 export"
+requires-python = "==3.13.*"
+license = {text = "Apache-2.0"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["mcu_toolkit"]

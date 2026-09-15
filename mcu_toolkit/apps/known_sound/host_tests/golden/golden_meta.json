@@ -1,0 +1,45 @@
+{
+  "tensorflow": "2.21.0",
+  "numpy": "2.2.6",
+  "cases": [
+    "silence",
+    "dc_offset",
+    "square_full_scale",
+    "tone_1000hz",
+    "tone_1234hz",
+    "chirp_50_to_8000hz",
+    "white_noise",
+    "tiny_noise",
+    "real_class1_0",
+    "real_class1_1",
+    "real_human_0",
+    "real_human_1",
+    "real_background_0",
+    "real_background_1"
+  ],
+  "config": {
+    "sample_rate": 16000,
+    "frame_length": 400,
+    "frame_step": 160,
+    "fft_length": 512,
+    "spectrogram_bins": 257,
+    "mel_bands": 64,
+    "mel_min_hz": 125.0,
+    "mel_max_hz": 7500.0,
+    "log_offset": 0.001,
+    "patch_frames": 96,
+    "patch_hop_frames": 48,
+    "clip_samples": 16000
+  },
+  "real_clips": {
+    "project": "<redacted>",
+    "classes": {
+      "class1": "0270ddfb5f2442e6956e2b808f5b99f4",
+      "human": "bdf06d3452164101bc578d0f3a4ff5ee",
+      "background": "6149d524ce4b4574bc78b7d6d56403d8"
+    },
+    "clips_per_class": 2
+  },
+  "mel_matrix_zero_rows": 22,
+  "mel_matrix_nonzero": 461
+}

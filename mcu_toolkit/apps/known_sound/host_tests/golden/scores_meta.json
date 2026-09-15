@@ -1,0 +1,33 @@
+{
+  "model": "<redacted>",
+  "model_sha256": "d68bb780b6b84005f8c25fd5e5a214636f906118c86db3fcc00237397f59e6ba",
+  "labels": [
+    "0 Class 1",
+    "1 human",
+    "2 Background"
+  ],
+  "input": {
+    "scale": 0.03330640494823456,
+    "zero_point": 66
+  },
+  "output": {
+    "scale": 0.00390625,
+    "zero_point": -128
+  },
+  "cases": [
+    "chirp_50_to_8000hz",
+    "dc_offset",
+    "real_background_0",
+    "real_background_1",
+    "real_class1_0",
+    "real_class1_1",
+    "real_human_0",
+    "real_human_1",
+    "silence",
+    "square_full_scale",
+    "tiny_noise",
+    "tone_1000hz",
+    "tone_1234hz",
+    "white_noise"
+  ]
+}

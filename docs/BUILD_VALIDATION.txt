@@ -1,0 +1,111 @@
+Teachable Machine Local Studio v2.1.0 Windows Only - Build Validation
+=====================================================================
+Build date: 2026-09-02 (v2.0.7 baseline), 2026-09-12 (v2.1.0 additions)
+
+Release objective
+-----------------
+- Native Windows-only Python 3.13 project environment.
+- Training runtime is always windows_tensorflow_cpu / Windows CPU.
+- Image and Audio project behavior remains available.
+- Abnormal Sound is a third project type using a frozen, pinned YAMNet
+  embedding encoder plus a Normal-only one-class anomaly scorer.
+- Known Sound is a fourth project type: a frozen YAMNet encoder plus a
+  trainable multi-label sigmoid head that names the sound.
+- v2.1.0: Image, Audio and Known Sound models can be built into NuMaker-M55M1
+  or NuGestureAI-M55M1 firmware using the Arm GNU Toolchain. GCC only; Keil is
+  not required and no Keil project is produced. The toolchain is installed by
+  the user and is not bundled.
+
+Validated in the actual Windows build environment
+-------------------------------------------------
+[PASS] Python 3.13 compileall for scripts, tm_local, and tests.
+[PASS] Automated test suite: .venv\Scripts\python.exe -m pytest runs green
+       apart from one known environment-dependent flake:
+       tests/test_tflite_helpers.py::test_fake_cached_int8_is_reconverted_and_freshly_audited
+       can fail to create an XNNPACK runtime late in a long single-process
+       run, and passes when run on its own.
+[PASS] scripts/start_local.py --check imported and created the application.
+[PASS] scripts/verify_install.py with TensorFlow 2.21.0 on Windows CPU.
+[PASS] Native .keras save/load and isolated strict INT8 conversion.
+[PASS] Live Uvicorn startup and GET /api/health returned HTTP 200.
+[PASS] Chrome 151 loaded the dynamic application; Abnormal Sound, YAMNet,
+       and Normal workflow elements were present in the rendered DOM.
+[PASS] Official YAMNet weights are pinned and SHA-256 verified:
+       13c3308955bbfaef262f175ac9c40e47b134573a93984f009220dd7cc12a1744.
+[PASS] Exact YAMNet frontend golden vectors and official-weight embedding
+       golden vectors.
+[PASS] Frozen encoder training path with 3 independent Normal recording
+       sessions, 60 seconds total, and a session-disjoint split.
+[PASS] Anomaly examples remain evaluation-only and cannot alter the Normal
+       reference or threshold.
+[PASS] Low-confidence calibration produces Uncertain, never a fabricated
+       Normal/Abnormal decision.
+[PASS] Scorer/model SHA and binding tamper detection in Preview and Export.
+[PASS] Full YAMNet INT8 conversion: INT8 input/output, zero Float tensors,
+       zero Flex operators, zero custom operators, input [1,96,64], and
+       output [1,1024].
+[PASS] Keras/TFLite embedding parity gate: mean cosine >= 0.95, minimum
+       cosine >= 0.80, and mean relative L2 <= 0.35.
+[PASS] Integer runtime reference and threshold are recalibrated in that
+       runtime's embedding geometry using Normal training sessions only.
+[PASS] Export runner reads the WAV, evaluates complete 1-second windows only
+       on the 0.5-second grid, and applies stateful 3-of-5 temporal voting.
+[PASS] Exported frontend parity for stereo INT16 and mono UINT8 WAV files.
+[PASS] Fake/stale same-named INT8 cache is rejected and reconverted; cache
+       reuse requires fresh inspection, file SHA, source-Keras SHA, and the
+       exact representative-tensor digest.
+[PASS] Train/Preview/browser/export geometry is locked to 1.0-second windows
+       and a 0.5-second hop; transient API options cannot override settings.
+[PASS] Missing or altered YAMNet frontend metadata blocks Preview, Export,
+       reference runner execution, and ZIP packaging.
+[PASS] Abnormal Sound ZIP contains model, scorer, frontend metadata,
+       reference frontend, runner, and conversion report; it omits labels.txt.
+[PASS] Distribution BAT and source safety tests remain green.
+
+v2.1.0 addition: MCU firmware deployment
+----------------------------------------
+The automated suite gained dedicated coverage for the firmware path. Tests that
+need the Arm GNU Toolchain (or MSVC for the Known Sound host golden comparison)
+skip themselves when it is absent, so a machine without it still runs green.
+
+- mcu_toolkit vendoring: manifest completeness, no .bat/.uvprojx/.uvoptx/.git,
+  patched linker script and FatFs configuration (tests/test_mcu_vendoring.py).
+- Build recipe derived from the progen records, compared against the recorded
+  reference recipe (tests/test_mcu_records.py).
+- Code generation: labels, model array, tensor-arena formula, token
+  substitution, Known Sound threshold codes (tests/test_mcu_codegen.py).
+- KWS log-mel tables regenerated from the training front end and replayed in
+  NumPy: element-wise equality with mel_filterbank() and a quantized difference
+  of at most 1 LSB against log_mel_spectrogram() (tests/test_kws_codegen.py).
+- Deploy contract, board locks and the Chinese refusal messages
+  (tests/test_mcu_contract.py, tests/test_mcu_deploy_guard.py).
+- Deploy job, download token and flash endpoint guards
+  (tests/test_mcu_deploy_api.py, tests/test_mcu_flash.py).
+- Real firmware builds for image, Known Sound and KWS on both boards, including
+  the linked size limits (tests/test_mcu_image_build.py,
+  tests/test_mcu_known_sound_build.py, tests/test_mcu_kws_build.py).
+- USB CDC retarget seam: the compiled _write() reaches the CDC tee
+  (tests/test_mcu_cdc_sources.py).
+- Known Sound C front end against Python golden vectors
+  (tests/test_known_sound_frontend_host.py, needs MSVC).
+- Tunable training settings, board locks and the INT8/Float agreement warning
+  (tests/test_tunables_config.py, test_image_tunables.py, test_audio_tunables.py,
+  test_known_sound_tunables.py, test_export_warnings.py).
+- Reference scripts compile and expose --help (tests/test_reference_scripts.py).
+
+Not validated: no firmware produced by this branch has been executed on real
+hardware. See the "Known limitations and untested items" section of
+docs/MCU_DEPLOY_zh-TW.md for the full list, which includes the non-cacheable
+linker section, the GestureAI DMIC channel 2 wiring, the GestureAI UVC+CDC
+composite device, the NuMaker-M55M1 debug UART port, and the Known Sound
+depth-12 firmware for the NuMaker-M55M1 board.
+
+Scope boundary
+--------------
+This validation proves that the new project, data collection, training,
+Preview, export, and reference-runtime paths execute correctly. It does not
+claim a target-machine fault-detection accuracy before representative GestureAI
+DMIC Normal and fault recordings are collected and evaluated with held-out
+recording sessions. The approximately 3.3 MiB integer YAMNet embedding core is
+the Desktop/Advanced backend; strict integer conversion alone does not prove
+flash, SRAM arena, operator resolver, or latency suitability for a specific MCU.

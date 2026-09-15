@@ -1,0 +1,25 @@
+{
+  "schema_version": "yamnet-logmel-patch-v2",
+  "sample_rate": 16000,
+  "stft_window_seconds": 0.025,
+  "stft_hop_seconds": 0.01,
+  "fft_length": 512,
+  "periodic_hann": true,
+  "spectrum": "magnitude",
+  "mel_bands": 64,
+  "mel_min_hz": 125.0,
+  "mel_max_hz": 7500.0,
+  "log_offset": 0.001,
+  "patch_frames": 96,
+  "patch_hop_frames": 48,
+  "patch_seconds": 0.96,
+  "patch_hop_seconds": 0.48,
+  "padding_policy": "pad_only_when_shorter_than_first_complete_patch",
+  "model_input_shape": [
+    96,
+    64
+  ],
+  "inference_window_seconds": 1.0,
+  "inference_hop_seconds": 0.5,
+  "inference_tail_policy": "complete_half_second_grid_windows_only"
+}

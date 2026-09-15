@@ -1,0 +1,68 @@
+{
+  "path": "known_sound3_int8.tflite",
+  "size_bytes": 4552,
+  "sha256": "9d729bee2b5548ae461718abe15be82374aa41e566ad9eebc8582e1b79f6570b",
+  "inputs": [
+    {
+      "name": "serving_default_log_mel_patch:0",
+      "shape": [
+        1,
+        96,
+        64
+      ],
+      "shape_signature": [
+        -1,
+        96,
+        64
+      ],
+      "dtype": "int8",
+      "scale": 0.038822855800390244,
+      "zero_point": 50,
+      "per_axis_scale_count": 1,
+      "per_axis_zero_point_count": 1,
+      "quantized_dimension": 0
+    }
+  ],
+  "outputs": [
+    {
+      "name": "StatefulPartitionedCall:0",
+      "shape": [
+        1,
+        3
+      ],
+      "shape_signature": [
+        -1,
+        3
+      ],
+      "dtype": "int8",
+      "scale": 0.00390625,
+      "zero_point": -128,
+      "per_axis_scale_count": 1,
+      "per_axis_zero_point_count": 1,
+      "quantized_dimension": 0
+    }
+  ],
+  "tensor_dtype_counts": {
+    "int8": 10,
+    "int32": 11
+  },
+  "float_tensor_count": 0,
+  "float_tensors": [],
+  "operators": [
+    "SHAPE",
+    "STRIDED_SLICE",
+    "PACK",
+    "RESHAPE",
+    "CONV_2D",
+    "DEPTHWISE_CONV_2D",
+    "MEAN",
+    "FULLY_CONNECTED",
+    "LOGISTIC",
+    "DELEGATE"
+  ],
+  "flex_operators": [],
+  "custom_operators": [],
+  "requires_select_tf_ops": false,
+  "integer_input_output": true,
+  "strict_full_integer": true
+}

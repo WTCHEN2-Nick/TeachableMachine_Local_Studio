@@ -1,0 +1,50 @@
+{
+  "NuMaker-M55M1": {
+    "label": "NuMaker-M55M1（X 板：LCD、板載 Nu-Link）",
+    "numl_template_board": "NuMaker-M55M1",
+    "has_lcd": true,
+    "has_camera": true,
+    "display_output": "lcd",
+    "audio_dmic": {"clk_macro": "SET_DMIC0_CLK_PB4", "dat_macro": "SET_DMIC0_DAT_PB5", "channel": 0},
+    "known_sound_max_depth": 12,
+    "internal_flash_bytes": 2097152,
+    "sram01_bytes": 1048576,
+    "flash_methods": ["nulink"],
+    "extra_defines": [],
+    "remove_defines": []
+  },
+  "NuGestureAI-M55M1": {
+    "label": "NuMaker-GestureAI-M55M1（無 LCD：USB 相機 + COM port）",
+    "numl_template_board": "NuGestureAI-M55M1",
+    "has_lcd": false,
+    "has_camera": true,
+    "display_output": "uvc_cdc",
+    "audio_dmic": {"clk_macro": "SET_DMIC1_CLK_PB2", "dat_macro": "SET_DMIC1_DAT_PB3", "channel": 2},
+    "known_sound_max_depth": 11,
+    "internal_flash_bytes": 2097152,
+    "sram01_bytes": 1048576,
+    "flash_methods": ["msc", "nulink"],
+    "extra_defines": [],
+    "remove_defines": []
+  },
+  "NuMaker-VoiceAI-M55M1": {
+    "label": "NuMaker-VoiceAI-M55M1（無相機：僅聲音，USB COM port）",
+    "numl_template_board": "NuGestureAI-M55M1",
+    "has_lcd": false,
+    "has_camera": false,
+    "display_output": "usb_cdc",
+    "audio_dmic": {
+      "clk_macro": "SET_DMIC0_CLK_PA4",
+      "dat_macro": "SET_DMIC0_DAT_PA5",
+      "channel": 0
+    },
+    "known_sound_max_depth": 11,
+    "internal_flash_bytes": 2097152,
+    "sram01_bytes": 1048576,
+    "flash_methods": ["pyocd"],
+    "extra_defines": ["DEBUG_PORT_UART_IDX=4", "NVT_DBG_UART_OFF"],
+    "remove_defines": ["DEBUG_PORT=UART5"],
+    "extra_sources": ["BoardInit_VoiceAI.cpp"],
+    "remove_source_basenames": ["BoardInit.cpp"]
+  }
+}

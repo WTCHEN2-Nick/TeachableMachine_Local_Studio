@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Teachable Machine Local Studio</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header id="globalHeader" class="global-header">
+    <button id="homeButton" class="brand-button" type="button" data-i18n-aria-label="header.home.aria" aria-label="回首頁">
+      <span class="brand-mark" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i>
+      </span>
+      <span class="brand-text"><strong>Teachable Machine</strong><small>Local Studio</small></span>
+    </button>
+    <div id="projectHeaderTools" class="header-project-tools hidden">
+      <input id="projectNameInput" class="project-name-input" maxlength="120" data-i18n-aria-label="header.projectName.aria" aria-label="專案名稱">
+      <span id="saveState" class="save-state" data-i18n="header.saveState.saved">已儲存於本機</span>
+    </div>
+    <div class="header-actions">
+      <div id="langToggle" class="lang-toggle" role="group" aria-label="Language / 語言">
+        <button type="button" class="lang-option" data-lang="zh">中文</button>
+        <button type="button" class="lang-option" data-lang="en">EN</button>
+      </div>
+      <span id="serverStatus" class="server-status"><i></i><span data-i18n="header.status.connecting">連線中</span></span>
+      <button id="importProjectButton" class="text-button" type="button" data-i18n="header.importProject">匯入專案</button>
+      <button id="exportProjectButton" class="text-button hidden" type="button" data-i18n="header.exportProject">下載專案</button>
+      <button id="downloadDiagnosticsButton" class="text-button diagnostic-button" type="button" data-i18n-title="header.diagnostics.title" title="發生問題時下載這個檔案" data-i18n="header.diagnostics.button">下載 Log</button>
+      <button id="deleteProjectButton" class="icon-button danger hidden" type="button" data-i18n-title="header.deleteProject" title="刪除專案" data-i18n-aria-label="header.deleteProject" aria-label="刪除專案">⋮</button>
+    </div>
+    <input id="importProjectInput" type="file" accept=".zip,application/zip" hidden>
+  </header>
+
+  <main id="homeView" class="home-view">
+    <section class="home-hero">
+      <div id="runtimePill" class="local-pill">LOCAL · WINDOWS · PYTHON 3.13 · CPU</div>
+      <h1><span data-i18n="home.title.line1">教電腦辨認</span><br><span class="hero-highlight" data-i18n="home.title.line2">自己的影像與聲音</span></h1>
+      <p data-i18n="home.hero.subtitle">所有樣本、訓練與模型量化都在這台 PC 執行。建立資料、訓練、預覽，再下載可部署的 INT8 TensorFlow Lite 模型。</p>
+    </section>
+
+    <section class="project-type-section" aria-labelledby="newProjectHeading">
+      <h2 id="newProjectHeading" data-i18n="home.newProject.heading">建立新專案</h2>
+      <div class="project-type-grid">
+        <button class="project-type-card image-card" data-create-kind="image" type="button">
+          <span class="project-card-illustration image-illustration" aria-hidden="true">
+            <span class="camera-lens"></span><span class="picture-mountain"></span>
+          </span>
+          <span class="project-card-copy">
+            <strong>Image Project</strong>
+            <small data-i18n="home.card.image.desc">用 Webcam 或圖片訓練影像分類模型</small>
+          </span>
+          <span class="project-card-arrow">→</span>
+        </button>
+        <button class="project-type-card audio-card" data-create-kind="audio" type="button">
+          <span class="project-card-illustration audio-illustration" aria-hidden="true">
+            <span class="wave wave-a"></span><span class="wave wave-b"></span><span class="wave wave-c"></span><span class="wave wave-d"></span><span class="wave wave-e"></span>
+          </span>
+          <span class="project-card-copy">
+            <strong>Audio Project</strong>
+            <small data-i18n="home.card.audio.desc">用麥克風或音訊檔訓練聲音分類模型</small>
+          </span>
+          <span class="project-card-arrow">→</span>
+        </button>
+        <button class="project-type-card abnormal-sound-card" data-create-kind="abnormal_sound" type="button">
+          <span class="project-card-illustration abnormal-sound-illustration" aria-hidden="true">
+            <span class="wave wave-a"></span><span class="wave wave-b"></span><span class="wave wave-c"></span><span class="wave wave-d"></span><span class="wave wave-e"></span>
+            <span class="anomaly-mark">!</span>
+          </span>
+          <span class="project-card-copy">
+            <strong>Abnormal Sound Project</strong>
+            <small data-i18n="home.card.abnormalSound.desc">收集正常聲音，以 frozen YAMNet embedding 建立基準並偵測未知異常</small>
+          </span>
+          <span class="project-card-arrow">→</span>
+        </button>
+        <button class="project-type-card known-sound-card" data-create-kind="known_sound" type="button">
+          <span class="project-card-illustration known-sound-illustration" aria-hidden="true">
+            <span class="wave wave-a"></span><span class="wave wave-b"></span><span class="wave wave-c"></span><span class="wave wave-d"></span><span class="wave wave-e"></span>
+            <span class="known-mark">?</span>
+          </span>
+          <span class="project-card-copy">
+            <strong>Known Sound Project</strong>
+            <small data-i18n="home.card.knownSound.desc">教它認得每一種聲音（例如槍聲／狗叫／玻璃破裂），顯示每類獨立的百分比</small>
+          </span>
+          <span class="project-card-arrow">→</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="recent-section">
+      <div class="section-heading-row">
+        <h2 data-i18n="home.recent.heading">最近的本機專案</h2>
+        <button id="refreshProjectsButton" class="text-button" type="button" data-i18n="common.refresh">重新整理</button>
+      </div>
+      <div id="recentProjects" class="recent-projects"></div>
+      <div id="emptyProjects" class="empty-projects hidden">
+        <div class="empty-icon">＋</div>
+        <strong data-i18n="home.empty.title">還沒有專案</strong>
+        <p data-i18n="home.empty.desc">選擇上方的 Image、Audio 或 Abnormal Sound Project 開始。</p>
+      </div>
+    </section>
+
+    <footer class="home-footer">
+      <p data-i18n="home.footer.disclaimer">本工具是獨立本機實作，不是 Google 官方產品；介面沿用熟悉的資料 → 訓練 → 預覽工作流程。</p>
+    </footer>
+  </main>
+
+  <main id="projectView" class="project-view hidden">
+    <div class="workspace-toolbar">
+      <div>
+        <span id="projectKindBadge" class="kind-badge">IMAGE PROJECT</span>
+        <span id="projectSampleSummary" class="sample-summary">0 samples</span>
+      </div>
+      <div class="workspace-toolbar-actions">
+        <div id="microphoneDeviceControls" class="microphone-device-controls hidden">
+          <label for="microphoneDeviceSelect" data-i18n="workspace.microphone.label">麥克風</label>
+          <select id="microphoneDeviceSelect" data-i18n-aria-label="workspace.microphone.selectAria" aria-label="選擇麥克風">
+            <option value="" data-i18n="workspace.microphone.systemDefault">系統預設麥克風</option>
+          </select>
+          <button id="refreshMicrophonesButton" class="mini-button" type="button" data-i18n-title="workspace.microphone.redetectTitle" title="重新偵測麥克風" data-i18n="workspace.microphone.redetect">重新偵測</button>
+          <span id="microphoneTrackSettings" class="microphone-track-settings" data-i18n="workspace.microphone.notStarted">尚未開始收音</span>
+        </div>
+        <button id="stopMediaButton" class="mini-button hidden" type="button" data-i18n="workspace.stopMedia">停止相機／麥克風</button>
+        <button id="reloadProjectButton" class="mini-button" type="button" data-i18n="common.refresh">重新整理</button>
+      </div>
+    </div>
+
+    <section id="workspaceCanvas" class="workspace-canvas">
+      <svg id="connectorSvg" class="connector-svg" aria-hidden="true"></svg>
+
+      <div id="classColumn" class="class-column">
+        <div id="classStack" class="class-stack"></div>
+        <button id="addClassButton" class="add-class-card" type="button"><span>⊞</span> Add a class</button>
+      </div>
+
+      <aside id="trainingCard" class="node-card training-card">
+        <div class="node-title">Training</div>
+        <div id="trainingIdle" class="training-idle">
+          <button id="trainButton" class="train-button" type="button">Train Model</button>
+          <p id="trainingHint" data-i18n="workspace.training.hint">每個類別加入足夠樣本後即可訓練。</p>
+        </div>
+        <div id="trainingProgress" class="training-progress hidden">
+          <div class="progress-ring" aria-hidden="true"><span id="trainingPercent">0%</span></div>
+          <strong id="trainingMessage">Preparing…</strong>
+          <div class="linear-progress"><i id="trainingProgressBar"></i></div>
+          <small data-i18n="workspace.training.progressNote">此階段只做訓練與儲存；INT8 量化會在 Export Model 時執行。</small>
+        </div>
+        <div id="trainingDone" class="training-done hidden">
+          <div class="done-check">✓</div>
+          <strong>Model Trained</strong>
+          <small id="trainingAccuracy" data-i18n="workspace.training.doneNote">模型已可預覽與匯出</small>
+          <button id="retrainButton" class="secondary-button" type="button">Retrain Model</button>
+        </div>
+        <details id="advancedTraining" class="advanced-training">
+          <summary>Advanced <span>⌄</span></summary>
+          <div id="trainingOptions" class="training-options"></div>
+        </details>
+      </aside>
+
+      <aside id="previewCard" class="node-card preview-card">
+        <div class="preview-header">
+          <div class="node-title">Preview</div>
+          <button id="openExportButton" class="export-button" type="button" disabled><span>⇩</span> Export Model</button>
+        </div>
+        <div id="previewLocked" class="preview-locked">
+          <div class="lock-icon">↯</div>
+          <p data-i18n="preview.locked">先在左邊訓練一個模型，才能在這裡預覽。</p>
+        </div>
+        <div id="previewReady" class="preview-ready hidden">
+          <div class="preview-control-row">
+            <label class="switch-label">Input <input id="previewInputToggle" type="checkbox"><span class="switch"></span><b id="previewToggleText">OFF</b></label>
+            <select id="previewRuntime" class="runtime-select" data-i18n-title="preview.runtimeSelect.title" title="預覽模型">
+              <option value="keras">Float training model</option>
+              <option value="int8">INT8 quantized model</option>
+              <option value="uint8">UINT8 quantized model</option>
+            </select>
+          </div>
+          <div id="imagePreviewPane" class="image-preview-pane hidden">
+            <video id="previewVideo" autoplay playsinline muted></video>
+            <canvas id="previewCanvas" width="320" height="320"></canvas>
+            <label class="preview-file-button">Choose image<input id="previewImageInput" type="file" accept="image/*" hidden></label>
+          </div>
+          <div id="audioPreviewPane" class="audio-preview-pane hidden">
+            <canvas id="liveSpectrogramCanvas" width="320" height="132"></canvas>
+            <div class="audio-live-status"><i></i><span id="audioLiveText">Microphone is off</span></div>
+            <label class="preview-file-button">Choose audio<input id="previewAudioInput" type="file" accept="audio/*" hidden></label>
+          </div>
+          <div class="preview-divider"><span>↓</span></div>
+          <div class="output-heading">Output</div>
+          <div id="predictionBars" class="prediction-bars"></div>
+          <p id="predictionNote" class="prediction-note hidden"></p>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <div id="exportModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+    <div class="modal export-modal">
+      <button class="modal-close" data-close-modal="exportModal" type="button" data-i18n-aria-label="modal.close.aria" aria-label="關閉">×</button>
+      <h2 id="exportTitle">Export Model</h2>
+      <p class="modal-lede" data-i18n="export.modal.lede">Train Model 只負責訓練與 Preview；TensorFlow Lite／INT8 會在這裡依你勾選的格式才開始轉換。</p>
+      <div class="export-tabs">
+        <button type="button" class="active" data-export-tab="tflite">TensorFlow Lite</button>
+        <button type="button" data-export-tab="mcu" data-i18n="export.mcu.tabLabel">部署到開發板</button>
+      </div>
+      <div id="exportTabTflite">
+      <div class="export-option-list">
+        <label class="export-option recommended">
+          <input type="checkbox" name="exportFormat" value="int8" checked>
+          <span class="export-check"></span>
+          <span><strong>Quantized INT8</strong><small data-i18n="export.format.int8.desc">完整整數 input/output，適合 MCU／NPU</small></span>
+          <em>Recommended</em>
+        </label>
+        <label class="export-option">
+          <input type="checkbox" name="exportFormat" value="uint8">
+          <span class="export-check"></span>
+          <span><strong>Quantized UINT8</strong><small data-i18n="export.format.uint8.desc">較舊 TensorFlow Lite runtime 相容格式</small></span>
+        </label>
+        <label class="export-option">
+          <input type="checkbox" name="exportFormat" value="float32">
+          <span class="export-check"></span>
+          <span><strong>Float32</strong><small data-i18n="export.format.float32.desc">做為準確度比對與桌面測試基準</small></span>
+        </label>
+        <label class="export-option">
+          <input type="checkbox" name="exportFormat" value="dynamic">
+          <span class="export-check"></span>
+          <span><strong>Dynamic Range</strong><small data-i18n="export.format.dynamic.desc">權重量化、Float32 I/O</small></span>
+        </label>
+        <label class="export-option">
+          <input type="checkbox" name="exportFormat" value="keras">
+          <span class="export-check"></span>
+          <span><strong>Keras model</strong><small data-i18n="export.format.keras.desc">保留可重新載入的訓練模型</small></span>
+        </label>
+      </div>
+      <label class="c-header-toggle"><input id="includeCHeader" type="checkbox" checked><span></span> <span data-i18n="export.includeCHeader">同時產生</span> <code>model_data.h</code> C array</label>
+      <div id="audioExportNotice" class="audio-export-notice hidden">
+        <span data-i18n="export.audioNotice.pre">Audio INT8 模型輸入是 log-mel spectrogram；ZIP 會附上</span> <code>audio_frontend.json</code> <span data-i18n="export.audioNotice.post">與完全一致的 Python 參考前處理。</span>
+      </div>
+      <div id="abnormalSoundExportNotice" class="audio-export-notice abnormal-export-notice hidden" data-i18n="export.abnormalSoundNotice">
+        Abnormal Sound 使用 frozen YAMNet 1024-D embedding 與 Normal-only scorer。匯出內容必須包含相符的 YAMNet frontend、scorer 與 threshold metadata；它不是聲音分類器。
+      </div>
+      <div id="exportWarningNotice" class="audio-export-notice hidden"></div>
+      <p class="export-time-note" data-i18n="export.timeNote">第一次產生 INT8 會在 CPU 上校正與轉換數分鐘；畫面會顯示實際進度與已經過時間。</p>
+      <button id="downloadModelButton" class="modal-primary-button" type="button">Create &amp; Download my model</button>
+      </div>
+      <div id="exportTabMcu" class="hidden">
+        <p class="modal-lede" data-i18n="mcu.modal.lede">把 Strict INT8 模型建成 Nuvoton M55M1 韌體。需要已安裝 Arm GNU Toolchain。</p>
+        <div id="mcuToolchainNotice" class="audio-export-notice hidden"></div>
+        <div id="mcuKindNotice" class="audio-export-notice hidden"></div>
+        <div id="mcuErrorNotice" class="audio-export-notice hidden"></div>
+        <label class="mcu-board-label"><span data-i18n="mcu.board.label">開發板</span><select id="mcuBoardSelect"></select></label>
+        <div id="mcuLastBuild" class="mcu-last-build hidden"></div>
+        <button id="deployMcuButton" class="modal-primary-button" type="button" data-i18n="mcu.deployButton">建置韌體</button>
+        <div id="mcuProgress" class="mcu-progress hidden">
+          <div class="linear-progress"><i id="mcuProgressBar"></i></div>
+          <p id="mcuProgressMessage" class="mcu-progress-message" aria-live="polite"></p>
+          <pre id="deployLog" class="deploy-log"></pre>
+        </div>
+        <div id="mcuResult" class="mcu-result hidden">
+          <p id="mcuResultSummary"></p>
+          <label id="mcuFlashMethodRow" class="mcu-board-label hidden"><span data-i18n="mcu.flashMethod.label">燒錄方式</span><select id="mcuFlashMethodSelect"></select></label>
+          <pre id="mcuFlashInstructions" class="deploy-log"></pre>
+          <div class="mcu-actions">
+            <button id="mcuDownloadButton" class="secondary-button" type="button" data-i18n="mcu.downloadButton">下載韌體 ZIP</button>
+            <button id="mcuFlashButton" class="modal-primary-button" type="button" data-i18n="mcu.flashButton">燒錄到板子</button>
+          </div>
+          <p id="mcuFlashStatus" class="mcu-flash-status" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirmModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal confirm-modal">
+      <h2 id="confirmTitle" data-i18n="confirm.title">確認操作</h2>
+      <p id="confirmMessage"></p>
+      <div class="confirm-actions">
+        <button id="confirmCancel" class="secondary-button" type="button" data-i18n="confirm.cancel">取消</button>
+        <button id="confirmAccept" class="danger-button" type="button" data-i18n="confirm.accept">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="busyOverlay" class="busy-overlay hidden"><div class="busy-box"><div class="spinner"></div><strong id="busyText" data-i18n="common.busy">處理中…</strong></div></div>
+  <div id="toastRegion" class="toast-region" aria-live="polite"></div>
+
+  <script src="/app.js?v=2.1.0"></script>
+</body>
+</html>

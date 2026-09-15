@@ -1,0 +1,480 @@
+--- a/NuML_TFLM_Tool/templates/M55M1/NuMaker-M55M1/imgclass_template/link_script/gcc/gcc.ld
++++ b/NuML_TFLM_Tool/templates/M55M1/NuMaker-M55M1/imgclass_template/link_script/gcc/gcc.ld
+@@ -58,6 +58,9 @@
+   FLASH  (rx)  : ORIGIN = 0x00100000, LENGTH = 0x00200000
+   SRAM2  (rw)  : ORIGIN = 0x20200000, LENGTH = 0x00050000
+   DTCM   (rw)  : ORIGIN = 0x20000000, LENGTH = 0x00020000
++  /* SRAM01 aliased window (armcc.scatter: SRAM_NONCACHEABLE SRAM01_ALIASE_START SRAM01_ALIASE_SIZE).
++   * Start address and size of the NonCacheable MPU region must be 32 byte aligned. */
++  SRAM_NONCACHEABLE (rw) : ORIGIN = 0x81F00000, LENGTH = 0x00100000
+   SRAM01_HYPERRAM  (rw)  : ORIGIN = 0x81F00000, LENGTH = 0x02100000
+ }
+ 
+@@ -91,6 +94,8 @@
+  *   __StackLimit
+  *   __StackTop
+  *   __stack
++ *   __sram_noncacheable_start__   (consumed by system_M55M1.c SystemInit MPU setup, GCC branch)
++ *   __sram_noncacheable_end__
+  */
+ 
+ ENTRY(Reset_Handler)
+@@ -121,6 +126,10 @@
+ 
+     *(.rodata*)
+     *(labels)
++    /* Vela-compiled model (tflite2cpp: MODEL_TFLITE_ATTRIBUTE -> section "nn_model").
++     * Explicit FLASH placement; without this the section is an orphan that ld
++     * happens to append after .ARM.extab. */
++    *(nn_model)
+ 
+     KEEP(*(.eh_frame*))
+   } > FLASH
+@@ -145,6 +154,8 @@
+     LONG ((__bss_end__ - __bss_start__) / 4)
+     LONG (__dtcm_zi_start__)
+     LONG ((__dtcm_zi_end__ - __dtcm_zi_start__) / 4)
++    LONG (__sram_noncacheable_zi_start__)
++    LONG ((__sram_noncacheable_zi_end__ - __sram_noncacheable_zi_start__) / 4)
+     __zero_table_end__ = .;
+ 
+   } > FLASH
+@@ -153,7 +164,7 @@
+   {
+     . = ALIGN(4);
+     __copy_table_start__ = .;
+-   
++
+     /* Section to be copied - part 1: RW data for for DTCM */
+     LONG (__eitcm)
+     LONG (__data_start__)
+@@ -164,12 +175,17 @@
+     LONG (__itcm_text_start__)
+     LONG ((__itcm_text_end__ - __itcm_text_start__ ) / 4)
+ 
++    /* Section to be copied - part 3: RW data for SRAM NonCacheable */
++    LONG (__edtcm_data)
++    LONG (__sram_noncacheable_init_start__)
++    LONG ((__sram_noncacheable_init_end__ - __sram_noncacheable_init_start__) / 4)
++
+     __copy_table_end__ = .;
+   } > FLASH
+ 
+   /**
+    * Location counter can end up 2byte aligned with narrow Thumb code but
+-   * __etext is assumed by startup code to be the LMA of a section 
++   * __etext is assumed by startup code to be the LMA of a section
+    * which must be 4byte aligned
+    */
+   __etext = ALIGN (4);
+@@ -221,17 +237,46 @@
+     /* All data end */
+   } > DTCM
+ 
+-  __edtcm_data = __etext + (__data_end__ - __data_start__);
+-
+   .sram2 (NOLOAD):
+   {
+     . = ALIGN(16);
+     *(.bss.vram.data)
+   } > SRAM2 AT > SRAM2
+ 
+-  .sram01_hyperram (NOLOAD):
++  /* End of the .data load image in FLASH (.data is loaded AT __eitcm, not __etext). */
++  __edtcm_data = __eitcm + (__data_end__ - __data_start__);
++
++  /* NonCacheable region: mirrors armcc.scatter SRAM_NONCACHEABLE / SRAM_NONCACHEABLE_END.
++   * system_M55M1.c (GCC branch) reads __sram_noncacheable_start__/__end__ and programs an
++   * MPU region with non-cacheable attributes over [start, DCACHE_ALIGN_LINE_SIZE(end)). */
++  .NonCacheable.Init : AT (__edtcm_data)
+   {
+-    . = ALIGN(16);
++    . = ALIGN(32);
++    __sram_noncacheable_start__ = .;
++    __sram_noncacheable_init_start__ = .;
++    *(NonCacheable.Init)
++    . = ALIGN(4);
++    __sram_noncacheable_init_end__ = .;
++  } > SRAM_NONCACHEABLE
++
++  .NonCacheable.ZeroInit (NOLOAD) :
++  {
++    . = ALIGN(4);
++    __sram_noncacheable_zi_start__ = .;
++    *(.NonCacheable.ZeroInit)
++    *(.bss.NonCacheable.ZeroInit)
++    . = ALIGN(4);
++    __sram_noncacheable_zi_end__ = .;
++    /* armcc.scatter: SRAM_NONCACHEABLE_END AlignExpr(+0, 1024) */
++    . = ALIGN(1024);
++    __sram_noncacheable_end__ = .;
++  } > SRAM_NONCACHEABLE AT > SRAM_NONCACHEABLE
++
++  /* armcc.scatter: SRAM01_HYPERRAM AlignExpr(+0, 32) UNINIT, i.e. it starts right after
++   * SRAM_NONCACHEABLE_END inside the same SRAM01-alias + SPIM0 window. */
++  .sram01_hyperram __sram_noncacheable_end__ (NOLOAD):
++  {
++    . = ALIGN(32);
+     *(.bss.sram.data)
+     *(.bss.NoInit.activation_buf_sram)
+   } > SRAM01_HYPERRAM AT > SRAM01_HYPERRAM
+--- a/NuML_TFLM_Tool/templates/M55M1/NuMaker-M55M1/generic_template/link_script/gcc/gcc.ld
++++ b/NuML_TFLM_Tool/templates/M55M1/NuMaker-M55M1/generic_template/link_script/gcc/gcc.ld
+@@ -58,6 +58,9 @@
+   FLASH  (rx)  : ORIGIN = 0x00100000, LENGTH = 0x00200000
+   SRAM2  (rw)  : ORIGIN = 0x20200000, LENGTH = 0x00050000
+   DTCM   (rw)  : ORIGIN = 0x20000000, LENGTH = 0x00020000
++  /* SRAM01 aliased window (armcc.scatter: SRAM_NONCACHEABLE SRAM01_ALIASE_START SRAM01_ALIASE_SIZE).
++   * Start address and size of the NonCacheable MPU region must be 32 byte aligned. */
++  SRAM_NONCACHEABLE (rw) : ORIGIN = 0x81F00000, LENGTH = 0x00100000
+   SRAM01_HYPERRAM  (rw)  : ORIGIN = 0x81F00000, LENGTH = 0x02100000
+ }
+ 
+@@ -91,6 +94,8 @@
+  *   __StackLimit
+  *   __StackTop
+  *   __stack
++ *   __sram_noncacheable_start__   (consumed by system_M55M1.c SystemInit MPU setup, GCC branch)
++ *   __sram_noncacheable_end__
+  */
+ 
+ ENTRY(Reset_Handler)
+@@ -121,6 +126,10 @@
+ 
+     *(.rodata*)
+     *(labels)
++    /* Vela-compiled model (tflite2cpp: MODEL_TFLITE_ATTRIBUTE -> section "nn_model").
++     * Explicit FLASH placement; without this the section is an orphan that ld
++     * happens to append after .ARM.extab. */
++    *(nn_model)
+ 
+     KEEP(*(.eh_frame*))
+   } > FLASH
+@@ -145,6 +154,8 @@
+     LONG ((__bss_end__ - __bss_start__) / 4)
+     LONG (__dtcm_zi_start__)
+     LONG ((__dtcm_zi_end__ - __dtcm_zi_start__) / 4)
++    LONG (__sram_noncacheable_zi_start__)
++    LONG ((__sram_noncacheable_zi_end__ - __sram_noncacheable_zi_start__) / 4)
+     __zero_table_end__ = .;
+ 
+   } > FLASH
+@@ -153,7 +164,7 @@
+   {
+     . = ALIGN(4);
+     __copy_table_start__ = .;
+-   
++
+     /* Section to be copied - part 1: RW data for for DTCM */
+     LONG (__eitcm)
+     LONG (__data_start__)
+@@ -164,12 +175,17 @@
+     LONG (__itcm_text_start__)
+     LONG ((__itcm_text_end__ - __itcm_text_start__ ) / 4)
+ 
++    /* Section to be copied - part 3: RW data for SRAM NonCacheable */
++    LONG (__edtcm_data)
++    LONG (__sram_noncacheable_init_start__)
++    LONG ((__sram_noncacheable_init_end__ - __sram_noncacheable_init_start__) / 4)
++
+     __copy_table_end__ = .;
+   } > FLASH
+ 
+   /**
+    * Location counter can end up 2byte aligned with narrow Thumb code but
+-   * __etext is assumed by startup code to be the LMA of a section 
++   * __etext is assumed by startup code to be the LMA of a section
+    * which must be 4byte aligned
+    */
+   __etext = ALIGN (4);
+@@ -221,17 +237,46 @@
+     /* All data end */
+   } > DTCM
+ 
+-  __edtcm_data = __etext + (__data_end__ - __data_start__);
+-
+   .sram2 (NOLOAD):
+   {
+     . = ALIGN(16);
+     *(.bss.vram.data)
+   } > SRAM2 AT > SRAM2
+ 
+-  .sram01_hyperram (NOLOAD):
++  /* End of the .data load image in FLASH (.data is loaded AT __eitcm, not __etext). */
++  __edtcm_data = __eitcm + (__data_end__ - __data_start__);
++
++  /* NonCacheable region: mirrors armcc.scatter SRAM_NONCACHEABLE / SRAM_NONCACHEABLE_END.
++   * system_M55M1.c (GCC branch) reads __sram_noncacheable_start__/__end__ and programs an
++   * MPU region with non-cacheable attributes over [start, DCACHE_ALIGN_LINE_SIZE(end)). */
++  .NonCacheable.Init : AT (__edtcm_data)
+   {
+-    . = ALIGN(16);
++    . = ALIGN(32);
++    __sram_noncacheable_start__ = .;
++    __sram_noncacheable_init_start__ = .;
++    *(NonCacheable.Init)
++    . = ALIGN(4);
++    __sram_noncacheable_init_end__ = .;
++  } > SRAM_NONCACHEABLE
++
++  .NonCacheable.ZeroInit (NOLOAD) :
++  {
++    . = ALIGN(4);
++    __sram_noncacheable_zi_start__ = .;
++    *(.NonCacheable.ZeroInit)
++    *(.bss.NonCacheable.ZeroInit)
++    . = ALIGN(4);
++    __sram_noncacheable_zi_end__ = .;
++    /* armcc.scatter: SRAM_NONCACHEABLE_END AlignExpr(+0, 1024) */
++    . = ALIGN(1024);
++    __sram_noncacheable_end__ = .;
++  } > SRAM_NONCACHEABLE AT > SRAM_NONCACHEABLE
++
++  /* armcc.scatter: SRAM01_HYPERRAM AlignExpr(+0, 32) UNINIT, i.e. it starts right after
++   * SRAM_NONCACHEABLE_END inside the same SRAM01-alias + SPIM0 window. */
++  .sram01_hyperram __sram_noncacheable_end__ (NOLOAD):
++  {
++    . = ALIGN(32);
+     *(.bss.sram.data)
+     *(.bss.NoInit.activation_buf_sram)
+   } > SRAM01_HYPERRAM AT > SRAM01_HYPERRAM
+--- a/NuML_TFLM_Tool/templates/M55M1/NuGestureAI-M55M1/imgclass_template/link_script/gcc/gcc.ld
++++ b/NuML_TFLM_Tool/templates/M55M1/NuGestureAI-M55M1/imgclass_template/link_script/gcc/gcc.ld
+@@ -58,6 +58,9 @@
+   FLASH  (rx)  : ORIGIN = 0x00100000, LENGTH = 0x00200000
+   SRAM2  (rw)  : ORIGIN = 0x20200000, LENGTH = 0x00050000
+   DTCM   (rw)  : ORIGIN = 0x20000000, LENGTH = 0x00020000
++  /* SRAM01 aliased window (armcc.scatter: SRAM_NONCACHEABLE SRAM01_ALIASE_START SRAM01_ALIASE_SIZE).
++   * Start address and size of the NonCacheable MPU region must be 32 byte aligned. */
++  SRAM_NONCACHEABLE (rw) : ORIGIN = 0x81F00000, LENGTH = 0x00100000
+   SRAM01 (rw)  : ORIGIN = 0x81F00000, LENGTH = 0x00100000
+ }
+ 
+@@ -91,6 +94,8 @@
+  *   __StackLimit
+  *   __StackTop
+  *   __stack
++ *   __sram_noncacheable_start__   (consumed by system_M55M1.c SystemInit MPU setup, GCC branch)
++ *   __sram_noncacheable_end__
+  */
+ 
+ ENTRY(Reset_Handler)
+@@ -121,6 +126,10 @@
+ 
+     *(.rodata*)
+     *(labels)
++    /* Vela-compiled model (tflite2cpp: MODEL_TFLITE_ATTRIBUTE -> section "nn_model").
++     * Explicit FLASH placement; without this the section is an orphan that ld
++     * happens to append after .ARM.extab. */
++    *(nn_model)
+ 
+     KEEP(*(.eh_frame*))
+   } > FLASH
+@@ -145,6 +154,8 @@
+     LONG ((__bss_end__ - __bss_start__) / 4)
+     LONG (__dtcm_zi_start__)
+     LONG ((__dtcm_zi_end__ - __dtcm_zi_start__) / 4)
++    LONG (__sram_noncacheable_zi_start__)
++    LONG ((__sram_noncacheable_zi_end__ - __sram_noncacheable_zi_start__) / 4)
+     __zero_table_end__ = .;
+ 
+   } > FLASH
+@@ -153,7 +164,7 @@
+   {
+     . = ALIGN(4);
+     __copy_table_start__ = .;
+-   
++
+     /* Section to be copied - part 1: RW data for for DTCM */
+     LONG (__eitcm)
+     LONG (__data_start__)
+@@ -164,12 +175,17 @@
+     LONG (__itcm_text_start__)
+     LONG ((__itcm_text_end__ - __itcm_text_start__ ) / 4)
+ 
++    /* Section to be copied - part 3: RW data for SRAM NonCacheable */
++    LONG (__edtcm_data)
++    LONG (__sram_noncacheable_init_start__)
++    LONG ((__sram_noncacheable_init_end__ - __sram_noncacheable_init_start__) / 4)
++
+     __copy_table_end__ = .;
+   } > FLASH
+ 
+   /**
+    * Location counter can end up 2byte aligned with narrow Thumb code but
+-   * __etext is assumed by startup code to be the LMA of a section 
++   * __etext is assumed by startup code to be the LMA of a section
+    * which must be 4byte aligned
+    */
+   __etext = ALIGN (4);
+@@ -221,17 +237,46 @@
+     /* All data end */
+   } > DTCM
+ 
+-  __edtcm_data = __etext + (__data_end__ - __data_start__);
+-
+   .sram2 (NOLOAD):
+   {
+     . = ALIGN(16);
+     *(.bss.vram.data)
+   } > SRAM2 AT > SRAM2
+ 
+-  .sram01 (NOLOAD):
++  /* End of the .data load image in FLASH (.data is loaded AT __eitcm, not __etext). */
++  __edtcm_data = __eitcm + (__data_end__ - __data_start__);
++
++  /* NonCacheable region: mirrors armcc.scatter SRAM_NONCACHEABLE / SRAM_NONCACHEABLE_END.
++   * system_M55M1.c (GCC branch) reads __sram_noncacheable_start__/__end__ and programs an
++   * MPU region with non-cacheable attributes over [start, DCACHE_ALIGN_LINE_SIZE(end)). */
++  .NonCacheable.Init : AT (__edtcm_data)
+   {
+-    . = ALIGN(16);
++    . = ALIGN(32);
++    __sram_noncacheable_start__ = .;
++    __sram_noncacheable_init_start__ = .;
++    *(NonCacheable.Init)
++    . = ALIGN(4);
++    __sram_noncacheable_init_end__ = .;
++  } > SRAM_NONCACHEABLE
++
++  .NonCacheable.ZeroInit (NOLOAD) :
++  {
++    . = ALIGN(4);
++    __sram_noncacheable_zi_start__ = .;
++    *(.NonCacheable.ZeroInit)
++    *(.bss.NonCacheable.ZeroInit)
++    . = ALIGN(4);
++    __sram_noncacheable_zi_end__ = .;
++    /* armcc.scatter: SRAM_NONCACHEABLE_END AlignExpr(+0, 1024) */
++    . = ALIGN(1024);
++    __sram_noncacheable_end__ = .;
++  } > SRAM_NONCACHEABLE AT > SRAM_NONCACHEABLE
++
++  /* armcc.scatter: SRAM01_HYPERRAM AlignExpr(+0, 32) UNINIT, i.e. it starts right after
++   * SRAM_NONCACHEABLE_END inside the same SRAM01-alias window (SPIM0_SIZE=0 on this board). */
++  .sram01 __sram_noncacheable_end__ (NOLOAD):
++  {
++    . = ALIGN(32);
+     *(.bss.sram.data)
+     *(.bss.NoInit.activation_buf_sram)
+   } > SRAM01 AT > SRAM01
+--- a/NuML_TFLM_Tool/templates/M55M1/NuGestureAI-M55M1/generic_template/link_script/gcc/gcc.ld
++++ b/NuML_TFLM_Tool/templates/M55M1/NuGestureAI-M55M1/generic_template/link_script/gcc/gcc.ld
+@@ -58,6 +58,9 @@
+   FLASH  (rx)  : ORIGIN = 0x00100000, LENGTH = 0x00200000
+   SRAM2  (rw)  : ORIGIN = 0x20200000, LENGTH = 0x00050000
+   DTCM   (rw)  : ORIGIN = 0x20000000, LENGTH = 0x00020000
++  /* SRAM01 aliased window (armcc.scatter: SRAM_NONCACHEABLE SRAM01_ALIASE_START SRAM01_ALIASE_SIZE).
++   * Start address and size of the NonCacheable MPU region must be 32 byte aligned. */
++  SRAM_NONCACHEABLE (rw) : ORIGIN = 0x81F00000, LENGTH = 0x00100000
+   SRAM01 (rw)  : ORIGIN = 0x81F00000, LENGTH = 0x00100000
+ }
+ 
+@@ -91,6 +94,8 @@
+  *   __StackLimit
+  *   __StackTop
+  *   __stack
++ *   __sram_noncacheable_start__   (consumed by system_M55M1.c SystemInit MPU setup, GCC branch)
++ *   __sram_noncacheable_end__
+  */
+ 
+ ENTRY(Reset_Handler)
+@@ -121,6 +126,10 @@
+ 
+     *(.rodata*)
+     *(labels)
++    /* Vela-compiled model (tflite2cpp: MODEL_TFLITE_ATTRIBUTE -> section "nn_model").
++     * Explicit FLASH placement; without this the section is an orphan that ld
++     * happens to append after .ARM.extab. */
++    *(nn_model)
+ 
+     KEEP(*(.eh_frame*))
+   } > FLASH
+@@ -145,6 +154,8 @@
+     LONG ((__bss_end__ - __bss_start__) / 4)
+     LONG (__dtcm_zi_start__)
+     LONG ((__dtcm_zi_end__ - __dtcm_zi_start__) / 4)
++    LONG (__sram_noncacheable_zi_start__)
++    LONG ((__sram_noncacheable_zi_end__ - __sram_noncacheable_zi_start__) / 4)
+     __zero_table_end__ = .;
+ 
+   } > FLASH
+@@ -153,7 +164,7 @@
+   {
+     . = ALIGN(4);
+     __copy_table_start__ = .;
+-   
++
+     /* Section to be copied - part 1: RW data for for DTCM */
+     LONG (__eitcm)
+     LONG (__data_start__)
+@@ -164,12 +175,17 @@
+     LONG (__itcm_text_start__)
+     LONG ((__itcm_text_end__ - __itcm_text_start__ ) / 4)
+ 
++    /* Section to be copied - part 3: RW data for SRAM NonCacheable */
++    LONG (__edtcm_data)
++    LONG (__sram_noncacheable_init_start__)
++    LONG ((__sram_noncacheable_init_end__ - __sram_noncacheable_init_start__) / 4)
++
+     __copy_table_end__ = .;
+   } > FLASH
+ 
+   /**
+    * Location counter can end up 2byte aligned with narrow Thumb code but
+-   * __etext is assumed by startup code to be the LMA of a section 
++   * __etext is assumed by startup code to be the LMA of a section
+    * which must be 4byte aligned
+    */
+   __etext = ALIGN (4);
+@@ -221,17 +237,46 @@
+     /* All data end */
+   } > DTCM
+ 
+-  __edtcm_data = __etext + (__data_end__ - __data_start__);
+-
+   .sram2 (NOLOAD):
+   {
+     . = ALIGN(16);
+     *(.bss.vram.data)
+   } > SRAM2 AT > SRAM2
+ 
+-  .sram01 (NOLOAD):
++  /* End of the .data load image in FLASH (.data is loaded AT __eitcm, not __etext). */
++  __edtcm_data = __eitcm + (__data_end__ - __data_start__);
++
++  /* NonCacheable region: mirrors armcc.scatter SRAM_NONCACHEABLE / SRAM_NONCACHEABLE_END.
++   * system_M55M1.c (GCC branch) reads __sram_noncacheable_start__/__end__ and programs an
++   * MPU region with non-cacheable attributes over [start, DCACHE_ALIGN_LINE_SIZE(end)). */
++  .NonCacheable.Init : AT (__edtcm_data)
+   {
+-    . = ALIGN(16);
++    . = ALIGN(32);
++    __sram_noncacheable_start__ = .;
++    __sram_noncacheable_init_start__ = .;
++    *(NonCacheable.Init)
++    . = ALIGN(4);
++    __sram_noncacheable_init_end__ = .;
++  } > SRAM_NONCACHEABLE
++
++  .NonCacheable.ZeroInit (NOLOAD) :
++  {
++    . = ALIGN(4);
++    __sram_noncacheable_zi_start__ = .;
++    *(.NonCacheable.ZeroInit)
++    *(.bss.NonCacheable.ZeroInit)
++    . = ALIGN(4);
++    __sram_noncacheable_zi_end__ = .;
++    /* armcc.scatter: SRAM_NONCACHEABLE_END AlignExpr(+0, 1024) */
++    . = ALIGN(1024);
++    __sram_noncacheable_end__ = .;
++  } > SRAM_NONCACHEABLE AT > SRAM_NONCACHEABLE
++
++  /* armcc.scatter: SRAM01_HYPERRAM AlignExpr(+0, 32) UNINIT, i.e. it starts right after
++   * SRAM_NONCACHEABLE_END inside the same SRAM01-alias window (SPIM0_SIZE=0 on this board). */
++  .sram01 __sram_noncacheable_end__ (NOLOAD):
++  {
++    . = ALIGN(32);
+     *(.bss.sram.data)
+     *(.bss.NoInit.activation_buf_sram)
+   } > SRAM01 AT > SRAM01

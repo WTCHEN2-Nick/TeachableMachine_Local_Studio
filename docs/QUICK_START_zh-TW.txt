@@ -1,0 +1,41 @@
+Teachable Machine Local Studio v2.1.0 Windows Only 快速開始
+================================================================
+
+第一次使用
+1. 安裝一般版 64-bit CPython 3.13.x。
+2. 把 ZIP 完整解壓縮到英文短路徑，例如 C:\TM_Local_Studio。
+3. 雙擊 01_INSTALL.bat。
+4. 安裝完成後雙擊 02_START.bat。
+5. 瀏覽器開啟 http://127.0.0.1:8765
+
+Abnormal Sound（YAMNet）
+- 在 Normal baseline 跨時段錄製至少 3 個獨立 sessions、合計 60 秒。
+- Anomaly Examples 只做評估，不會拿來訓練或調 threshold。
+- 建議至少 6 個 sessions、120 秒以上；未達 calibration gate 時只顯示分數與 Uncertain。
+- 01_INSTALL.bat 會下載並驗證一次 pinned YAMNet 權重，之後可離線 Train／Preview。
+
+部署到 M55M1 開發板（選用）
+- 支援 Image、Audio、Known Sound 三種專案；Abnormal Sound 不支援。
+- 先安裝一次免費的 Arm GNU Toolchain：
+  .venv\Scripts\python.exe scripts\download_arm_toolchain.py
+  （預設裝到 runtime\arm-gnu-toolchain\，會驗證 SHA-256；不需要 Keil）
+- 裝好後重新執行 01_INSTALL.bat，讓安裝紀錄一起更新。
+- 在 Export Model 視窗切到「部署到開發板」頁籤，選板子後按「建置韌體」。
+- 詳細步驟、燒錄方式與限制：docs\MCU_DEPLOY_zh-TW.md
+
+只有兩個 BAT
+- 01_INSTALL.bat：建立／更新 Windows .venv，安裝與驗證 TensorFlow。
+- 02_START.bat：啟動網站。
+
+Runtime
+- 固定使用原生 Windows CPU。
+- 不安裝 Linux、WSL、CUDA 或第二套 Python 環境。
+- 即使電腦有 NVIDIA 顯卡，本版也不會要求其他作業系統設定。
+
+發生問題
+- 網頁右上角按「下載 Log」。
+- 將 TM_Local_Studio_Diagnostic.txt 傳給負責人。
+- 安裝失敗：查看 logs\LATEST_INSTALL.log。
+- 執行／訓練／匯出失敗：查看 logs\LATEST.log。
+- 環境損壞時，關閉程式、刪除 .venv、重新執行 01_INSTALL.bat。
+- 不要刪除 workspace。
