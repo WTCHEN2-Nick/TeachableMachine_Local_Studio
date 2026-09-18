@@ -35,6 +35,8 @@ Teachable Machine Local Studio 是一套完全在你自己這台 Windows 電腦�
 
 **先確認 Python 版本。** 這是唯一一件裝錯就完全無法安裝的事：必須是**64 位元、一般版（不是 free-threaded 的 3.13t 實驗版）的 CPython 3.13.x**。3.12 和 3.14 都會被拒絕。安裝 Python 時建議勾選「Add python.exe to PATH」。如果你的電腦已經裝了好幾個 Python（例如 Anaconda），沒關係——安裝程式會自動找出符合條件的那一個，Anaconda 裝的 Python 3.13（64 位元）也可以用，安裝程式不會啟動 conda，一律會建立自己專用的環境。
 
+**電腦上還沒有 Python 3.13？** Studio 資料夾裡的 `0_Python_3.13.15\python-3.13.15-amd64.exe` 就是正確版本的官方安裝檔（Python Software Foundation 數位簽章），直接雙擊安裝即可，記得在第一個畫面勾選「Add python.exe to PATH」。
+
 **把資料夾放在短路徑。** 解壓縮整個 ZIP 之後，資料夾本身的路徑長度會影響你**幾週後**才會用到的功能——燒錄韌體到開發板。訓練、Preview、匯出 TensorFlow Lite 都不受影響，但開發板韌體的原始碼路徑很深，Windows 的路徑長度上限（260 字元）會讓編譯器找不到某些標頭檔。經驗值是：整個 Studio 資料夾本身的路徑長度最好在 78 個字元以內。桌面路徑（例如 `C:\Users\你的名字\Desktop\TeachableMachine_Local_Studio_v3`）常常已經逼近這個上限，建議直接放在 `C:\TM_Local_Studio` 或 `C:\TM_Studio` 這種短路徑下。如果你沒注意到、路徑太長，之後在「部署到開發板」頁籤按建置韌體時，會直接看到中文訊息告訴你「Studio 資料夾路徑太長，請把整個資料夾搬到較短的路徑」——把整個資料夾搬到短路徑，重新啟動就好，不需要重灌。
 
 **第一次安裝需要網路**，之後大部分操作可以離線（細節見下方「離線陷阱」）。
@@ -194,6 +196,18 @@ Known Sound 每一類都有自己獨立的 0～1 分數，這些分數**不會�
 ![Known Sound 類別卡片，片段數與獨立錄音場次數是分開顯示的兩個數字](docs/screenshots/20_recording_sessions.png)
 
 *圖 4：前兩個類別各只錄過一次、Background 還完全沒錄的 Known Sound 專案。卡片上那行「6 Audio Samples / 20 minimum」與下面那行「1 / 2 次獨立錄音」是兩個各自獨立的門檻，後面接著寫出還差多少——這就是上一段要你「分開錄很多次」的原因：錄一次很長的音檔只會讓上面那行的片段數變大，下面那行還是停在 1。*
+
+**用開發板本身的麥克風或鏡頭收樣本（選用）：** 如果模型最後要燒到板子上，用「同一顆」麥克風或鏡頭收集樣本，可以避免模型學到的是筆電麥克風或 Webcam 的音色與畫質，而不是板子上實際收到的樣子。`1_Collect_Firmware_bin` 資料夾裡的韌體就是做這件事的：燒進板子之後，板子接上電腦會變成一支 USB 麥克風或一台 USB 攝影機，在 Studio 收樣本時從麥克風／攝影機選單選它即可。
+
+| 板子資料夾 | 檔案 | 板子會變成 | zip 裡可燒錄的 `.bin` |
+|---|---|---|---|
+| `NuMaker-X-M55M1D` | `DMIC_UAC_Codec_Monitor.zip` | USB 麥克風（電腦上顯示為 `M55M1 DMIC Mic`），另可插耳機即時監聽 | `Keil\release\DMIC_UAC_Codec_Monitor.bin` |
+| `NuMaker-X-M55M1D` | `HSUSBD_Video_CAM.zip` | USB 攝影機（HM1055 感測器） | **沒有**，只有原始碼，需要自行用 Keil 編譯 |
+| `NuMaker-GestureAI-M55M1` | `DMIC_UAC_NuMaker-GestureAI-M55M1.zip` | USB 麥克風 | `Keil\release\DMIC_UAC_Codec_Monitor.bin` |
+| `NuMaker-GestureAI-M55M1` | `HSUSBD_Video_CAM_GC0308.zip` | USB 攝影機（GC0308 感測器） | `KEIL\Objects\HSUSBD_Video_CAM.bin` |
+| `NuMaker-VoiceAI-M55M1(Chip select M5531)` | `DMIC_UAC_NuMaker-VoiceAI-M55M1.zip` | USB 麥克風 | `VSCode\out\DMIC_UAC_Codec_Monitor\ARMCLANG\Release\DMIC_UAC_Codec_Monitor.bin` |
+
+每個 zip 都是一份完整的專案原始碼，解壓縮後找到上表的 `.bin`，用第 6.4 節對應板子的方式燒錄。要注意一塊板子同一時間只能跑一份韌體：之後把 Studio 建出來的模型韌體燒進去時，這份收樣本用的韌體就會被取代，想再收樣本就要重新燒一次。
 
 ### 4.3 樣本數要收多少才夠（這是門檻，不是目標）
 
@@ -406,7 +420,7 @@ Abnormal Sound 的進階設定裡，唯一能調的是「敏感度」：
 
 **燒錄工具則是另外一回事，而且大多數情況下不裝也沒關係**——建置韌體、下載 ZIP 檔完全不需要它們，只有想用 Studio 裡「燒錄到板子」這個一鍵按鈕才需要：
 
-- **X 板**：需要另外安裝 Nu-Link Command Tool（Nuvoton 官方工具，Studio 會自動找到常見安裝路徑）。
+- **X 板**：需要安裝 Nu-Link Command Tool（Nuvoton 官方工具，Studio 會自動找到常見安裝路徑）。安裝檔已經附在 `2_Compiler and Download Tool Driver\en-us--Nu-Link_Command_Tool_V3.23.7973r.zip`，解壓縮後執行裡面的安裝程式即可。
 - **GestureAI**：預設的 USB 隨身碟模式不需要安裝任何東西。
 - **VoiceAI**：需要執行一次 `.venv\Scripts\python.exe scripts\setup_voiceai_flash.py`，它會把 pyocd 裝進 Studio 自己的環境裡，並下載一份 Nuvoton 官方的裝置描述檔（同樣會驗證檔案大小與雜湊）。這個板子沒有內建除錯器，一定要另外準備一個外接的 Nu-Link2 除錯器。
 

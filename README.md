@@ -35,7 +35,8 @@ embedded background.
 ## 🚀 Quick start
 
 1. Install **64-bit CPython 3.13.x** (not the free-threaded `3.13t` build), ticking
-   *Add python.exe to PATH*.
+   *Add python.exe to PATH*. The official installer for the right version is bundled in
+   [`0_Python_3.13.15/`](0_Python_3.13.15/).
 2. Unzip or clone into a **short path** — `C:\TM_Local_Studio` is ideal. Long paths break the
    firmware build weeks later, not now.
 3. Double-click **`01_INSTALL.bat`** — builds `.venv` and verifies the environment with a real
@@ -113,7 +114,10 @@ Details, memory limits and every error message: [docs/MCU_DEPLOY_zh-TW.md](docs/
 ## 📁 Repository layout
 
 ```text
+0_Python_3.13.15/               official Python 3.13 installer (run first if Python is missing)
 01_INSTALL.bat / 02_START.bat   the only two student entry points
+1_Collect_Firmware_bin/         firmware that turns a board into a USB mic / camera for collecting
+2_Compiler and Download Tool Driver/   Nu-Link Command Tool installer (X-board flashing)
 tm_local/                       FastAPI app, project store, training, export, MCU pipeline
 web/                            browser UI (zh/en toggle)
 mcu_toolkit/                    vendored firmware templates, M55M1 BSP subset, Vela compiler

@@ -151,6 +151,8 @@ Add python.exe to PATH
 
 不支援 experimental free-threaded `Python 3.13t`。
 
+正確版本的官方安裝檔已附在 `0_Python_3.13.15\python-3.13.15-amd64.exe`，電腦上還沒有 Python 3.13 就直接執行它。
+
 ## 第一次使用
 
 1. 將 ZIP 完整解壓縮到英文短路徑，例如：
@@ -346,7 +348,7 @@ Export Model 視窗的第二個頁籤是「部署到開發板」。Image、Audio
    或直接按「燒錄到板子」。燒錄前會再確認一次檔名、大小與板子。
 
 燒錄方式：GestureAI 按住 User 鍵＋Reset 進入 `M55M1` 隨身碟模式，把 `firmware.bin` 拖進去
-再 Reset；X 板用 Nu-Link Command Tool（偵測你自己安裝的版本，Studio 不附）或 Keil 下載。
+再 Reset；X 板用 Nu-Link Command Tool（安裝檔附在 `2_Compiler and Download Tool Driver\`）或 Keil 下載。
 
 重新訓練或改動樣本會作廢模型，連同韌體一起清掉，網頁會提示「模型已變更，請重新建置。」
 
@@ -414,6 +416,9 @@ TensorFlow Lite 單次 `convert()` 沒有細部進度 callback，所以同一種
 # 重要資料夾
 
 ```text
+0_Python_3.13.15\            Python 3.13 官方安裝檔（電腦沒有 Python 時先執行）
+1_Collect_Firmware_bin\      讓開發板變成 USB 麥克風／攝影機、用來收樣本的韌體
+2_Compiler and Download Tool Driver\   Nu-Link Command Tool 安裝檔（X 板燒錄用）
 .venv\                       Windows Python 3.13 專案環境
 workspace\projects\          學生專案、樣本與模型（含 models\mcu\<板子>\ 的韌體）
 logs\LATEST.log              最近一次 Local Studio 執行紀錄

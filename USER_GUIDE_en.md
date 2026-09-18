@@ -65,6 +65,10 @@ If your PC already has several Pythons (Anaconda, for example), that is fine —
 the one that qualifies. An Anaconda-installed 64-bit Python 3.13 works too; the installer never
 starts conda and always builds its own dedicated environment.
 
+**No Python 3.13 on the machine yet?** `0_Python_3.13.15\python-3.13.15-amd64.exe` in the Studio
+folder is the official installer for the right version (digitally signed by the Python Software
+Foundation). Double-click it, and tick "Add python.exe to PATH" on the first screen.
+
 **Put the folder on a short path.** After you unzip, the length of the folder's own path affects a
 feature you will not use for *weeks* — building firmware for a dev board. Training, Preview and
 TensorFlow Lite export are unaffected, but the firmware source tree is deeply nested, and Windows'
@@ -340,6 +344,26 @@ Background not at all. The "6 Audio Samples / 20 minimum" line and the "1 / 2 in
 recordings" line below it are two separate thresholds, each followed by how far you still have to
 go. This is exactly why the previous paragraph asks you to record many separate times: one long
 recording only grows the top number, while the bottom one stays at 1.*
+
+**Collecting with the board's own microphone or camera (optional):** if the model will end up on a
+board, collecting samples through that *same* microphone or camera keeps the model from learning
+the sound and picture quality of a laptop mic or webcam instead of what the board actually
+receives. The firmware in `1_Collect_Firmware_bin` does exactly this: once flashed, the board shows
+up on the PC as a USB microphone or a USB camera, and you pick it from the microphone / camera menu
+while collecting samples in Studio.
+
+| Board folder | File | The board becomes | Flashable `.bin` inside the zip |
+|---|---|---|---|
+| `NuMaker-X-M55M1D` | `DMIC_UAC_Codec_Monitor.zip` | USB microphone (shown on the PC as `M55M1 DMIC Mic`), plus live headphone monitoring | `Keil\release\DMIC_UAC_Codec_Monitor.bin` |
+| `NuMaker-X-M55M1D` | `HSUSBD_Video_CAM.zip` | USB camera (HM1055 sensor) | **None** — source only; build it yourself in Keil |
+| `NuMaker-GestureAI-M55M1` | `DMIC_UAC_NuMaker-GestureAI-M55M1.zip` | USB microphone | `Keil\release\DMIC_UAC_Codec_Monitor.bin` |
+| `NuMaker-GestureAI-M55M1` | `HSUSBD_Video_CAM_GC0308.zip` | USB camera (GC0308 sensor) | `KEIL\Objects\HSUSBD_Video_CAM.bin` |
+| `NuMaker-VoiceAI-M55M1(Chip select M5531)` | `DMIC_UAC_NuMaker-VoiceAI-M55M1.zip` | USB microphone | `VSCode\out\DMIC_UAC_Codec_Monitor\ARMCLANG\Release\DMIC_UAC_Codec_Monitor.bin` |
+
+Each zip is a complete project source tree. Unzip it, find the `.bin` listed above, and flash it
+using your board's method from section 6.4. Remember that a board runs one firmware at a time: when
+you later flash the model firmware built by Studio, it replaces this collection firmware, so flash
+the collection firmware again whenever you want to collect more samples.
 
 ### 4.3 How many samples are enough (these are floors, not targets)
 
@@ -667,7 +691,9 @@ and downloading the ZIP need none of them. They are needed only for the one-clic
 button inside Studio:
 
 - **X board:** requires the Nu-Link Command Tool (Nuvoton's official tool; Studio finds it at the
-  usual install locations).
+  usual install locations). The installer ships in
+  `2_Compiler and Download Tool Driver\en-us--Nu-Link_Command_Tool_V3.23.7973r.zip` — unzip it and
+  run the installer inside.
 - **GestureAI:** the default USB mass-storage mode needs nothing installed.
 - **VoiceAI:** run `.venv\Scripts\python.exe scripts\setup_voiceai_flash.py` once. It installs
   pyocd into Studio's own environment and downloads Nuvoton's official device description pack
