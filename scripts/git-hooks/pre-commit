@@ -1,0 +1,12 @@
+#!/bin/sh
+# Refuses commits that would publish a Windows home-directory path; see scripts/check_publish.py.
+# Enabled for this clone with:  git config core.hooksPath scripts/git-hooks
+if [ -x .venv/Scripts/python.exe ]; then
+  exec .venv/Scripts/python.exe scripts/check_publish.py --staged
+elif command -v py >/dev/null 2>&1; then
+  exec py -3 scripts/check_publish.py --staged
+elif command -v python >/dev/null 2>&1; then
+  exec python scripts/check_publish.py --staged
+fi
+echo "[check_publish] 找不到 Python，這次沒有做個資檢查。"
+exit 0
